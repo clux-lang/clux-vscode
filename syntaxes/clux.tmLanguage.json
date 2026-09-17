@@ -140,7 +140,7 @@
     "literal-keywords": {
       "patterns": [
         {
-          "match": "\\b(true|false|undefined)\\b",
+          "match": "\\b(true|false|undefined|nil)\\b",
           "name": "constant.language.clux"
         }
       ]

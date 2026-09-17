@@ -35,6 +35,7 @@ const wasmBin = vsco.loadWASM;
     'var c = \'z\';',
     'var ok = true && !false;',
     'var u = undefined;',
+    'var n = nil;',
     'var ext = i32 extends i64;',
     'var t = (a > b) ? a : b;',
     'x += 1;',
