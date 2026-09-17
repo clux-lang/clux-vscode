@@ -123,6 +123,7 @@ const wasmBin = vsco.loadWASM;
     '    bind_func 64',
     '    set_func_name "main"',
     '    push_undefined',
+    '    set_closure "base"',
     '    define "main"',
     '    halt',
     'main:',
