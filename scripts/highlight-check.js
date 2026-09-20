@@ -50,6 +50,8 @@ const wasmBin = vsco.loadWASM;
     'var ft: func(i32)->i32;',
     'comptime func add(a: i32, b: i32): i32 { return a + b; }',
     'comptime var SUM = add(1, 2);',
+    'enum Color:i32 { Red = 1, Green = 2, Blue = 3 }',
+    'var c: Color = Color::Red;',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -69,6 +71,7 @@ const wasmBin = vsco.loadWASM;
     'storage.type.clux',
     'variable.other.clux',
     'storage.modifier.clux',
+    'entity.name.type.clux',
   ];
 
   const found = new Set();
@@ -88,6 +91,34 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: all', expected.length, 'clux expected scopes produced.');
+
+  // ---- enum 声明 + Color::Red 访问断言 ----
+  // enum 关键字 → storage.type.clux；类型名 → entity.name.type.clux；
+  // Color::Red 中的 :: → keyword.operator.clux。
+  const enumLine = lines.find((l) => l.startsWith('enum Color'));
+  const er = grammar.tokenizeLine(enumLine, null);
+  const enumKw = er.tokens.filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => enumLine.slice(t.startIndex, t.endIndex)).join('');
+  const enumName = er.tokens.filter((t) => t.scopes.includes('entity.name.type.clux'))
+    .map((t) => enumLine.slice(t.startIndex, t.endIndex)).join('');
+  if (enumKw !== 'enum') {
+    console.error('FAIL: enum keyword not highlighted as storage.type:', JSON.stringify(enumKw));
+    process.exit(1);
+  }
+  if (enumName !== 'Color') {
+    console.error('FAIL: enum type name not highlighted as entity.name.type:', JSON.stringify(enumName));
+    process.exit(1);
+  }
+  const refLine = lines.find((l) => l.includes('Color::Red'));
+  const rr = grammar.tokenizeLine(refLine, null);
+  const opHits = rr.tokens
+    .filter((t) => t.scopes.includes('keyword.operator.clux'))
+    .map((t) => refLine.slice(t.startIndex, t.endIndex));
+  if (!opHits.includes('::')) {
+    console.error('FAIL: :: not highlighted as keyword.operator:', JSON.stringify(opHits));
+    process.exit(1);
+  }
+  console.log('OK: enum declaration + Color::Red assertions passed.');
 
   // ---- 不嵌套块注释 + 函数类型断言 ----
   // 不嵌套注释：块注释遇第一个 */ 即结束（与 C 一致），其后的内容按代码处理；
@@ -180,6 +211,17 @@ const wasmBin = vsco.loadWASM;
     '    load_type 66',
     '    set_type',
     '    seal',
+    '    push_enum',
+    '    define_type 68',
+    '    load_type 68',
+    '    load_type 2',
+    '    set_type',
+    '    enum_variant "Red" 1',
+    '    enum_variant "Green" 2',
+    '    seal',
+    '    load_type 68',
+    '    push_i32 1',
+    '    make_enum',
     '    .byte 0x0a',
     '    load_type 64',
     '    push_function [main]',
@@ -227,6 +269,27 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: all', cxsExpected.length, 'cxs expected scopes produced.');
+
+  // ---- cxs enum 助记符断言 ----
+  // PUSH_ENUM / ENUM_VARIANT "Red" 1 / MAKE_ENUM 必须着 keyword.mnemonic.cxs。
+  const enumMn = ['push_enum', 'enum_variant', 'make_enum'];
+  const cxsTokens = [];
+  let eState = null;
+  for (const line of cxsSample.split('\n')) {
+    const r = cxsGrammar.tokenizeLine(line, eState);
+    eState = r.ruleStack;
+    for (const t of r.tokens) {
+      const text = line.slice(t.startIndex, t.endIndex);
+      if (t.scopes.includes('keyword.mnemonic.cxs')) cxsTokens.push(text);
+    }
+  }
+  for (const m of enumMn) {
+    if (!cxsTokens.includes(m)) {
+      console.error('FAIL: enum mnemonic not highlighted:', m);
+      process.exit(1);
+    }
+  }
+  console.log('OK: cxs enum mnemonics (push_enum/enum_variant/make_enum) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });

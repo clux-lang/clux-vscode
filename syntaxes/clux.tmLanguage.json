@@ -9,6 +9,7 @@
     { "include": "#characters" },
     { "include": "#numbers" },
     { "include": "#comptime-keyword" },
+    { "include": "#enum-declaration" },
     { "include": "#function-declaration" },
     { "include": "#function-type-keyword" },
     { "include": "#var-declaration" },
@@ -100,6 +101,13 @@
       "match": "\\bcomptime\\b",
       "name": "storage.modifier.clux"
     },
+    "enum-declaration": {
+      "match": "\\b(enum)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "storage.type.clux" },
+        "2": { "name": "entity.name.type.clux" }
+      }
+    },
     "function-declaration": {
       "match": "\\b(func)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
@@ -166,7 +174,7 @@
       "patterns": [
         {
           "name": "keyword.operator.clux",
-          "match": "<<|>>|<=|>=|==|!=|&&|\\|\\||\\+=|-=|\\*=|/=|%=|[+\\-*/%<>=!&|^~?]"
+          "match": "<<|>>|<=|>=|==|!=|&&|\\|\\||\\+=|-=|\\*=|/=|%=|::|[+\\-*/%<>=!&|^~?]"
         }
       ]
     },
