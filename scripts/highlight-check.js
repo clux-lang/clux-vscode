@@ -25,6 +25,9 @@ const wasmBin = vsco.loadWASM;
   const sample = [
     '// 行注释',
     '/* 块注释 */',
+    '/* 外层块注释',
+    '   /* 内层块注释 */',
+    '   外层继续 */',
     'func fib(n: i32): i32 {',
     '    if n <= 1 { return n; }',
     '    return fib(n - 1) + fib(n - 2);',
@@ -40,6 +43,11 @@ const wasmBin = vsco.loadWASM;
     'var t = (a > b) ? a : b;',
     'x += 1;',
     'while x > 0 { x--; }',
+    'switch (x) {',
+    '    (1, 2)->{ return 1; }',
+    '    default->{ return 0; }',
+    '}',
+    'var ft: func(i32)->i32;',
     'comptime func add(a: i32, b: i32): i32 { return a + b; }',
     'comptime var SUM = add(1, 2);',
   ].join('\n');
@@ -80,6 +88,42 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: all', expected.length, 'clux expected scopes produced.');
+
+  // ---- 嵌套块注释 + 函数类型断言 ----
+  // 嵌套注释：外层 /* 在内层 */ 后必须继续到外层 */（TextMate 一层嵌套）；
+  // 函数类型：func( 中的 func 必须着 storage.type.function.clux。
+  const nestedIdx = lines.findIndex((l) => l.startsWith('   /* 内层'));
+  const outerIdx = lines.findIndex((l) => l.startsWith('   外层继续 */'));
+  if (nestedIdx < 0 || outerIdx < 0) {
+    console.error('FAIL: nested comment sample lines not found');
+    process.exit(1);
+  }
+  let nState = null;
+  const nTokens = []; /* { line, token } 对，空白尾随 token 豁免 */
+  for (let i = 0; i <= outerIdx; i++) {
+    const r = grammar.tokenizeLine(lines[i], nState);
+    nState = r.ruleStack;
+    if (i === nestedIdx || i === outerIdx) {
+      for (const t of r.tokens) nTokens.push({ line: lines[i], token: t });
+    }
+  }
+  for (const { line, token: t } of nTokens) {
+    const text = line.slice(t.startIndex, t.endIndex);
+    if (/^\s*$/.test(text)) continue; /* 空白（含 CRLF 尾随 \r）豁免 */
+    if (!t.scopes.includes('comment.block.clux')) {
+      console.error('FAIL: nested comment line token not comment.block.clux:', JSON.stringify(t));
+      process.exit(1);
+    }
+  }
+  const ftLine = lines.find((l) => l.startsWith('var ft: func('));
+  const fr = grammar.tokenizeLine(ftLine, null);
+  const ftHits = fr.tokens.filter((t) => t.scopes.includes('storage.type.function.clux'));
+  const ftText = ftHits.map((t) => ftLine.slice(t.startIndex, t.endIndex)).join('');
+  if (ftText !== 'func') {
+    console.error('FAIL: func-type keyword not highlighted as storage.type.function:', JSON.stringify(ftText));
+    process.exit(1);
+  }
+  console.log('OK: nested block comment + func-type keyword assertions passed.');
 
   // ---- cxs 汇编语法冒烟测试 ----
   const registryCxs = new vsctm.Registry({

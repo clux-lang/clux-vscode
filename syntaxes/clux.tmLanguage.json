@@ -10,6 +10,7 @@
     { "include": "#numbers" },
     { "include": "#comptime-keyword" },
     { "include": "#function-declaration" },
+    { "include": "#function-type-keyword" },
     { "include": "#var-declaration" },
     { "include": "#type-keywords" },
     { "include": "#control-keywords" },
@@ -35,7 +36,20 @@
           },
           "endCaptures": {
             "0": { "name": "punctuation.definition.comment.end.clux" }
-          }
+          },
+          "patterns": [
+            {
+              "name": "comment.block.clux",
+              "begin": "/\\*",
+              "end": "\\*/",
+              "beginCaptures": {
+                "0": { "name": "punctuation.definition.comment.begin.clux" }
+              },
+              "endCaptures": {
+                "0": { "name": "punctuation.definition.comment.end.clux" }
+              }
+            }
+          ]
         }
       ]
     },
@@ -106,6 +120,10 @@
         "2": { "name": "entity.name.function.clux" }
       }
     },
+    "function-type-keyword": {
+      "match": "\\bfunc(?=\\s*\\()",
+      "name": "storage.type.function.clux"
+    },
     "var-declaration": {
       "match": "\\b(var)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
@@ -124,7 +142,11 @@
     "control-keywords": {
       "patterns": [
         {
-          "match": "\\b(if|else|while|for|break|continue|return)\\b",
+          "match": "\\b(if|else|switch|while|for|break|continue|return)\\b",
+          "name": "keyword.control.clux"
+        },
+        {
+          "match": "\\b(default)\\b",
           "name": "keyword.control.clux"
         }
       ]
