@@ -25,9 +25,9 @@ const wasmBin = vsco.loadWASM;
   const sample = [
     '// 行注释',
     '/* 块注释 */',
-    '/* 外层块注释',
-    '   /* 内层块注释 */',
-    '   外层继续 */',
+    '/* 块注释不嵌套：',
+    '   遇到第一个 */ 即结束',
+    '   之后按代码处理 */',
     'func fib(n: i32): i32 {',
     '    if n <= 1 { return n; }',
     '    return fib(n - 1) + fib(n - 2);',
@@ -89,29 +89,47 @@ const wasmBin = vsco.loadWASM;
   }
   console.log('OK: all', expected.length, 'clux expected scopes produced.');
 
-  // ---- 嵌套块注释 + 函数类型断言 ----
-  // 嵌套注释：外层 /* 在内层 */ 后必须继续到外层 */（TextMate 一层嵌套）；
+  // ---- 不嵌套块注释 + 函数类型断言 ----
+  // 不嵌套注释：块注释遇第一个 */ 即结束（与 C 一致），其后的内容按代码处理；
   // 函数类型：func( 中的 func 必须着 storage.type.function.clux。
-  const nestedIdx = lines.findIndex((l) => l.startsWith('   /* 内层'));
-  const outerIdx = lines.findIndex((l) => l.startsWith('   外层继续 */'));
-  if (nestedIdx < 0 || outerIdx < 0) {
-    console.error('FAIL: nested comment sample lines not found');
+  const midIdx = lines.findIndex((l) => l.startsWith('   遇到第一个'));
+  const afterIdx = lines.findIndex((l) => l.startsWith('   之后按代码处理'));
+  if (midIdx < 0 || afterIdx < 0) {
+    console.error('FAIL: non-nested comment sample lines not found');
     process.exit(1);
   }
   let nState = null;
-  const nTokens = []; /* { line, token } 对，空白尾随 token 豁免 */
-  for (let i = 0; i <= outerIdx; i++) {
+  const cTokens = []; /* midIdx 行 token 列表（含空白豁免） */
+  for (let i = 0; i <= midIdx; i++) {
     const r = grammar.tokenizeLine(lines[i], nState);
     nState = r.ruleStack;
-    if (i === nestedIdx || i === outerIdx) {
-      for (const t of r.tokens) nTokens.push({ line: lines[i], token: t });
+    if (i === midIdx) {
+      for (const t of r.tokens) cTokens.push({ line: lines[i], token: t });
     }
   }
-  for (const { line, token: t } of nTokens) {
+  const midLine = lines[midIdx];
+  const closeAt = midLine.indexOf('*' + '/'); /* 首个结束标记位置 */
+  for (const { line, token: t } of cTokens) {
     const text = line.slice(t.startIndex, t.endIndex);
     if (/^\s*$/.test(text)) continue; /* 空白（含 CRLF 尾随 \r）豁免 */
-    if (!t.scopes.includes('comment.block.clux')) {
-      console.error('FAIL: nested comment line token not comment.block.clux:', JSON.stringify(t));
+    const endPunct = t.scopes.includes('punctuation.definition.comment.end.clux');
+    if (text === '*' + '/' && endPunct) continue; /* 结束标记本身合法 */
+    if (t.endIndex <= closeAt + 2) {
+      if (!t.scopes.includes('comment.block.clux')) {
+        console.error('FAIL: pre-*/ content not comment.block.clux:', JSON.stringify(t));
+        process.exit(1);
+      }
+    } else if (t.scopes.includes('comment.block.clux')) {
+      console.error('FAIL: post-*/ content still comment.block.clux:', JSON.stringify(t));
+      process.exit(1);
+    }
+  }
+  const ar = grammar.tokenizeLine(lines[afterIdx], nState);
+  for (const t of ar.tokens) {
+    const text = lines[afterIdx].slice(t.startIndex, t.endIndex);
+    if (/^\s*$/.test(text)) continue;
+    if (t.scopes.includes('comment.block.clux')) {
+      console.error('FAIL: line after */ still comment.block.clux:', JSON.stringify(t));
       process.exit(1);
     }
   }
@@ -123,7 +141,7 @@ const wasmBin = vsco.loadWASM;
     console.error('FAIL: func-type keyword not highlighted as storage.type.function:', JSON.stringify(ftText));
     process.exit(1);
   }
-  console.log('OK: nested block comment + func-type keyword assertions passed.');
+  console.log('OK: non-nested block comment + func-type keyword assertions passed.');
 
   // ---- cxs 汇编语法冒烟测试 ----
   const registryCxs = new vsctm.Registry({
