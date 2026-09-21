@@ -50,6 +50,8 @@ const wasmBin = vsco.loadWASM;
     'var ft: func(i32)->i32;',
     'comptime func add(a: i32, b: i32): i32 { return a + b; }',
     'comptime var SUM = add(1, 2);',
+    'func |fact| fact(n: i32): i32 { return n * fact(n - 1); }',
+    'var g = func |base| add2(x: i32): i32 { return base + x; };',
     'enum Color:i32 { Red = 1, Green = 2, Blue = 3 }',
     'var c: Color = Color::Red;',
   ].join('\n');
@@ -173,6 +175,34 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: non-nested block comment + func-type keyword assertions passed.');
+
+  // ---- 闭包语法 func 关键字断言 ----
+  // 捕获列表（func |fact| fact / func |base| add2）不打断 function-declaration：
+  // func 必须着 storage.type.function.clux，函数名着 entity.name.function.clux。
+  for (const [needle, funcText, nameText] of [
+    ['func |fact| fact', 'func', 'fact'],
+    ['func |base| add2', 'func', 'add2'],
+  ]) {
+    const cLine = lines.find((l) => l.includes(needle));
+    if (!cLine) {
+      console.error('FAIL: closure sample line not found:', needle);
+      process.exit(1);
+    }
+    const cr = grammar.tokenizeLine(cLine, null);
+    const cFunc = cr.tokens.filter((t) => t.scopes.includes('storage.type.function.clux'))
+      .map((t) => cLine.slice(t.startIndex, t.endIndex)).join('');
+    const cName = cr.tokens.filter((t) => t.scopes.includes('entity.name.function.clux'))
+      .map((t) => cLine.slice(t.startIndex, t.endIndex)).join('');
+    if (cFunc !== funcText) {
+      console.error('FAIL: closure func keyword not highlighted as storage.type.function:', JSON.stringify(cFunc));
+      process.exit(1);
+    }
+    if (cName !== nameText) {
+      console.error('FAIL: closure function name not highlighted as entity.name.function:', JSON.stringify(cName));
+      process.exit(1);
+    }
+  }
+  console.log('OK: closure func keyword + function name assertions passed.');
 
   // ---- cxs 汇编语法冒烟测试 ----
   const registryCxs = new vsctm.Registry({

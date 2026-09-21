@@ -109,7 +109,7 @@
       }
     },
     "function-declaration": {
-      "match": "\\b(func)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "match": "\\b(func)(?:\\s*\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
         "1": { "name": "storage.type.function.clux" },
         "2": { "name": "entity.name.function.clux" }
