@@ -54,6 +54,8 @@ const wasmBin = vsco.loadWASM;
     'var g = func |base| add2(x: i32): i32 { return base + x; };',
     'enum Color:i32 { Red = 1, Green = 2, Blue = 3 }',
     'var c: Color = Color::Red;',
+    'struct Point { x: i32; y: i32; }',
+    'var p: Point = undefined;',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -121,6 +123,24 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: enum declaration + Color::Red assertions passed.');
+
+  // ---- struct 声明断言 ----
+  // struct 关键字 → storage.type.clux；类型名 → entity.name.type.clux。
+  const structLine = lines.find((l) => l.startsWith('struct Point'));
+  const sr = grammar.tokenizeLine(structLine, null);
+  const structKw = sr.tokens.filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => structLine.slice(t.startIndex, t.endIndex)).join('');
+  const structName = sr.tokens.filter((t) => t.scopes.includes('entity.name.type.clux'))
+    .map((t) => structLine.slice(t.startIndex, t.endIndex)).join('');
+  if (structKw !== 'struct') {
+    console.error('FAIL: struct keyword not highlighted as storage.type:', JSON.stringify(structKw));
+    process.exit(1);
+  }
+  if (structName !== 'Point') {
+    console.error('FAIL: struct type name not highlighted as entity.name.type:', JSON.stringify(structName));
+    process.exit(1);
+  }
+  console.log('OK: struct declaration assertions passed.');
 
   // ---- 不嵌套块注释 + 函数类型断言 ----
   // 不嵌套注释：块注释遇第一个 */ 即结束（与 C 一致），其后的内容按代码处理；
@@ -252,6 +272,14 @@ const wasmBin = vsco.loadWASM;
     '    load_type 68',
     '    push_i32 1',
     '    make_enum',
+    '    push_struct',
+    '    define_type 69',
+    '    load_type 69',
+    '    load_type 2',
+    '    define_field "x"',
+    '    load_type 2',
+    '    define_field "y"',
+    '    seal',
     '    .byte 0x0a',
     '    load_type 64',
     '    push_function [main]',
@@ -320,6 +348,17 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: cxs enum mnemonics (push_enum/enum_variant/make_enum) highlighted.');
+
+  // ---- cxs struct 助记符断言 ----
+  // PUSH_STRUCT / DEFINE_FIELD "x" 必须着 keyword.mnemonic.cxs。
+  const structMn = ['push_struct', 'define_field'];
+  for (const m of structMn) {
+    if (!cxsTokens.includes(m)) {
+      console.error('FAIL: struct mnemonic not highlighted:', m);
+      process.exit(1);
+    }
+  }
+  console.log('OK: cxs struct mnemonics (push_struct/define_field) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });
