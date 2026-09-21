@@ -280,6 +280,11 @@ const wasmBin = vsco.loadWASM;
     '    load_type 2',
     '    define_field "y"',
     '    seal',
+    '    push "p"',
+    '    field_get "x"',
+    '    push "p"',
+    '    push_i32 1',
+    '    field_set "y"',
     '    .byte 0x0a',
     '    load_type 64',
     '    push_function [main]',
@@ -350,15 +355,16 @@ const wasmBin = vsco.loadWASM;
   console.log('OK: cxs enum mnemonics (push_enum/enum_variant/make_enum) highlighted.');
 
   // ---- cxs struct 助记符断言 ----
-  // PUSH_STRUCT / DEFINE_FIELD "x" 必须着 keyword.mnemonic.cxs。
-  const structMn = ['push_struct', 'define_field'];
+  // PUSH_STRUCT / DEFINE_FIELD "x" / FIELD_GET "x" / FIELD_SET "y" 必须着
+  // keyword.mnemonic.cxs。
+  const structMn = ['push_struct', 'define_field', 'field_get', 'field_set'];
   for (const m of structMn) {
     if (!cxsTokens.includes(m)) {
       console.error('FAIL: struct mnemonic not highlighted:', m);
       process.exit(1);
     }
   }
-  console.log('OK: cxs struct mnemonics (push_struct/define_field) highlighted.');
+  console.log('OK: cxs struct mnemonics (push_struct/define_field/field_get/field_set) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });
