@@ -125,15 +125,15 @@
       }
     },
     "function-declaration": {
-      "match": "\\b(func)(?:\\s*\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "match": "\\b(func)\\s*(?:\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
-        "1": { "name": "storage.type.function.clux" },
+        "1": { "name": "storage.type.clux" },
         "2": { "name": "entity.name.function.clux" }
       }
     },
     "function-type-keyword": {
       "match": "\\bfunc(?=\\s*\\()",
-      "name": "storage.type.function.clux"
+      "name": "storage.type.clux"
     },
     "var-declaration": {
       "match": "\\b(var)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",

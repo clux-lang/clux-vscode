@@ -65,7 +65,6 @@ const wasmBin = vsco.loadWASM;
   const expected = [
     'comment.line.double-slash.clux',
     'comment.block.clux',
-    'storage.type.function.clux',
     'entity.name.function.clux',
     'storage.type.primitive.clux',
     'keyword.control.clux',
@@ -219,10 +218,12 @@ const wasmBin = vsco.loadWASM;
   }
   const ftLine = lines.find((l) => l.startsWith('var ft: func('));
   const fr = grammar.tokenizeLine(ftLine, null);
-  const ftHits = fr.tokens.filter((t) => t.scopes.includes('storage.type.function.clux'));
-  const ftText = ftHits.map((t) => ftLine.slice(t.startIndex, t.endIndex)).join('');
-  if (ftText !== 'func') {
-    console.error('FAIL: func-type keyword not highlighted as storage.type.function:', JSON.stringify(ftText));
+  const ftHits = fr.tokens
+    .filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => ftLine.slice(t.startIndex, t.endIndex))
+    .filter((s) => s === 'func');
+  if (ftHits.length !== 1) {
+    console.error('FAIL: func-type keyword not highlighted as storage.type:', JSON.stringify(ftHits));
     process.exit(1);
   }
   console.log('OK: non-nested block comment + func-type keyword assertions passed.');
@@ -240,12 +241,14 @@ const wasmBin = vsco.loadWASM;
       process.exit(1);
     }
     const cr = grammar.tokenizeLine(cLine, null);
-    const cFunc = cr.tokens.filter((t) => t.scopes.includes('storage.type.function.clux'))
-      .map((t) => cLine.slice(t.startIndex, t.endIndex)).join('');
+    const cFunc = cr.tokens
+      .filter((t) => t.scopes.includes('storage.type.clux'))
+      .map((t) => cLine.slice(t.startIndex, t.endIndex))
+      .filter((s) => s === funcText);
     const cName = cr.tokens.filter((t) => t.scopes.includes('entity.name.function.clux'))
       .map((t) => cLine.slice(t.startIndex, t.endIndex)).join('');
-    if (cFunc !== funcText) {
-      console.error('FAIL: closure func keyword not highlighted as storage.type.function:', JSON.stringify(cFunc));
+    if (cFunc.length !== 1) {
+      console.error('FAIL: closure func keyword not highlighted as storage.type:', JSON.stringify(cFunc));
       process.exit(1);
     }
     if (cName !== nameText) {
