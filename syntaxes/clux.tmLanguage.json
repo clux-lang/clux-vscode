@@ -11,6 +11,7 @@
     { "include": "#comptime-keyword" },
     { "include": "#struct-declaration" },
     { "include": "#enum-declaration" },
+    { "include": "#union-declaration" },
     { "include": "#function-declaration" },
     { "include": "#function-type-keyword" },
     { "include": "#var-declaration" },
@@ -116,6 +117,13 @@
         "2": { "name": "entity.name.type.clux" }
       }
     },
+    "union-declaration": {
+      "match": "\\b(union)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "storage.type.clux" },
+        "2": { "name": "entity.name.type.clux" }
+      }
+    },
     "function-declaration": {
       "match": "\\b(func)(?:\\s*\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
@@ -173,7 +181,7 @@
     "cast-keyword": {
       "patterns": [
         {
-          "match": "\\b(as|extends)\\b",
+          "match": "\\b(as|extends|is)\\b",
           "name": "keyword.operator.clux"
         }
       ]

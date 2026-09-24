@@ -56,6 +56,9 @@ const wasmBin = vsco.loadWASM;
     'var c: Color = Color::Red;',
     'struct Point { x: i32; y: i32; }',
     'var p: Point = undefined;',
+    'union Shape { Circle: { radius: f32 }; Rect: { w: f32, h: f32 }; Empty; }',
+    'var s: Shape = .Shape{.Circle{ .radius = 1.5f32 }};',
+    'if (s is Circle != true) { return 1; }',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -141,6 +144,34 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: struct declaration assertions passed.');
+
+  // ---- union 声明 + is 运算符断言 ----
+  // union 关键字 → storage.type.clux；类型名 → entity.name.type.clux；
+  // `s is Circle` 中的 is → keyword.operator.clux。
+  const unionLine = lines.find((l) => l.startsWith('union Shape'));
+  const ur = grammar.tokenizeLine(unionLine, null);
+  const unionKw = ur.tokens.filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => unionLine.slice(t.startIndex, t.endIndex)).join('');
+  const unionName = ur.tokens.filter((t) => t.scopes.includes('entity.name.type.clux'))
+    .map((t) => unionLine.slice(t.startIndex, t.endIndex)).join('');
+  if (unionKw !== 'union') {
+    console.error('FAIL: union keyword not highlighted as storage.type:', JSON.stringify(unionKw));
+    process.exit(1);
+  }
+  if (unionName !== 'Shape') {
+    console.error('FAIL: union type name not highlighted as entity.name.type:', JSON.stringify(unionName));
+    process.exit(1);
+  }
+  const isLine = lines.find((l) => l.includes('s is Circle'));
+  const ir = grammar.tokenizeLine(isLine, null);
+  const isHits = ir.tokens
+    .filter((t) => t.scopes.includes('keyword.operator.clux'))
+    .map((t) => isLine.slice(t.startIndex, t.endIndex));
+  if (!isHits.includes('is')) {
+    console.error('FAIL: is not highlighted as keyword.operator:', JSON.stringify(isHits));
+    process.exit(1);
+  }
+  console.log('OK: union declaration + is operator assertions passed.');
 
   // ---- 不嵌套块注释 + 函数类型断言 ----
   // 不嵌套注释：块注释遇第一个 */ 即结束（与 C 一致），其后的内容按代码处理；
@@ -293,6 +324,14 @@ const wasmBin = vsco.loadWASM;
     '    push_undefined',
     '    set_closure "base"',
     '    define "main"',
+    '    push_union',
+    '    define_type 70',
+    '    load_type 70',
+    '    union_member "Circle"',
+    '    union_member "Empty"',
+    '    seal',
+    '    push "s"',
+    '    is_tag 0',
     '    halt',
     'main:',
     '    push_scope',
@@ -365,6 +404,17 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: cxs struct mnemonics (push_struct/define_field/field_get/field_set) highlighted.');
+
+  // ---- cxs union 助记符断言 ----
+  // PUSH_UNION / UNION_MEMBER "Circle" / IS_TAG 0 必须着 keyword.mnemonic.cxs。
+  const unionMn = ['push_union', 'union_member', 'is_tag'];
+  for (const m of unionMn) {
+    if (!cxsTokens.includes(m)) {
+      console.error('FAIL: union mnemonic not highlighted:', m);
+      process.exit(1);
+    }
+  }
+  console.log('OK: cxs union mnemonics (push_union/union_member/is_tag) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });
