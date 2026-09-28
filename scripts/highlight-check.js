@@ -56,9 +56,9 @@ const wasmBin = vsco.loadWASM;
     'var c: Color = Color::Red;',
     'struct Point { x: i32; y: i32; }',
     'var p: Point = undefined;',
-    'union Shape { Circle: { radius: f32 }; Rect: { w: f32, h: f32 }; Empty; }',
-    'var s: Shape = .Shape{.Circle{ .radius = 1.5f32 }};',
-    'if (s is Circle != true) { return 1; }',
+    'union Shape { radius: f32; w: f32; h: f32; }',
+    'var s: Shape = .Shape{.radius = 1.5f32};',
+    'if (s is radius != true) { return 1; }',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -161,7 +161,7 @@ const wasmBin = vsco.loadWASM;
     console.error('FAIL: union type name not highlighted as entity.name.type:', JSON.stringify(unionName));
     process.exit(1);
   }
-  const isLine = lines.find((l) => l.includes('s is Circle'));
+  const isLine = lines.find((l) => l.includes('s is radius'));
   const ir = grammar.tokenizeLine(isLine, null);
   const isHits = ir.tokens
     .filter((t) => t.scopes.includes('keyword.operator.clux'))
