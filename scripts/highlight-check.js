@@ -57,6 +57,7 @@ const wasmBin = vsco.loadWASM;
     'struct Point { x: i32; y: i32; }',
     'var p: Point = undefined;',
     'union Shape { radius: f32; w: f32; h: f32; }',
+    'cunion Union { i: i32; f: f32; b: bool; }',
     'var s: Shape = .Shape{.radius = 1.5f32};',
     'if (s is radius != true) { return 1; }',
   ].join('\n');
@@ -171,6 +172,24 @@ const wasmBin = vsco.loadWASM;
     process.exit(1);
   }
   console.log('OK: union declaration + is operator assertions passed.');
+
+  // ---- cunion 声明断言 ----
+  // cunion 关键字 → storage.type.clux；类型名 → entity.name.type.clux。
+  const cunionLine = lines.find((l) => l.startsWith('cunion Union'));
+  const cur = grammar.tokenizeLine(cunionLine, null);
+  const cunionKw = cur.tokens.filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => cunionLine.slice(t.startIndex, t.endIndex)).join('');
+  const cunionName = cur.tokens.filter((t) => t.scopes.includes('entity.name.type.clux'))
+    .map((t) => cunionLine.slice(t.startIndex, t.endIndex)).join('');
+  if (cunionKw !== 'cunion') {
+    console.error('FAIL: cunion keyword not highlighted as storage.type:', JSON.stringify(cunionKw));
+    process.exit(1);
+  }
+  if (cunionName !== 'Union') {
+    console.error('FAIL: cunion type name not highlighted as entity.name.type:', JSON.stringify(cunionName));
+    process.exit(1);
+  }
+  console.log('OK: cunion declaration assertions passed.');
 
   // ---- 不嵌套块注释 + 函数类型断言 ----
   // 不嵌套注释：块注释遇第一个 */ 即结束（与 C 一致），其后的内容按代码处理；
@@ -335,6 +354,12 @@ const wasmBin = vsco.loadWASM;
     '    seal',
     '    push "s"',
     '    is_tag 0',
+    '    push_cunion',
+    '    define_type 71',
+    '    load_type 71',
+    '    load_type 2',
+    '    define_field "i"',
+    '    seal',
     '    halt',
     'main:',
     '    push_scope',
@@ -418,6 +443,18 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: cxs union mnemonics (push_union/union_member/is_tag) highlighted.');
+
+  // ---- cxs cunion 助记符断言 ----
+  // PUSH_CUNION / DEFINE_FIELD "i" 必须着 keyword.mnemonic.cxs（cunion 与
+  // struct 同构平铺字段语法，复用 DEFINE_FIELD 协议）。
+  const cunionMn = ['push_cunion'];
+  for (const m of cunionMn) {
+    if (!cxsTokens.includes(m)) {
+      console.error('FAIL: cunion mnemonic not highlighted:', m);
+      process.exit(1);
+    }
+  }
+  console.log('OK: cxs cunion mnemonics (push_cunion) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });

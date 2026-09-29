@@ -12,6 +12,7 @@
     { "include": "#struct-declaration" },
     { "include": "#enum-declaration" },
     { "include": "#union-declaration" },
+    { "include": "#cunion-declaration" },
     { "include": "#function-declaration" },
     { "include": "#function-type-keyword" },
     { "include": "#var-declaration" },
@@ -119,6 +120,13 @@
     },
     "union-declaration": {
       "match": "\\b(union)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "storage.type.clux" },
+        "2": { "name": "entity.name.type.clux" }
+      }
+    },
+    "cunion-declaration": {
+      "match": "\\b(cunion)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
         "1": { "name": "storage.type.clux" },
         "2": { "name": "entity.name.type.clux" }
