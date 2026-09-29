@@ -60,6 +60,9 @@ const wasmBin = vsco.loadWASM;
     'cunion Union { i: i32; f: f32; b: bool; }',
     'var s: Shape = .Shape{.radius = 1.5f32};',
     'if (s is radius != true) { return 1; }',
+    'var sz: u64 = sizeof(i32);',
+    'var al: u64 = alignof(u64);',
+    'var ty: typeof(42) = 42;',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -455,6 +458,29 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: cxs cunion mnemonics (push_cunion) highlighted.');
+
+  // ---- 编译期运算符 sizeof/alignof/typeof 断言 ----
+  // sizeof(i32) / alignof(u64) / typeof(42) 必须着 keyword.operator.clux。
+  for (const [needle, kw] of [
+    ['var sz: u64 = sizeof(i32);', 'sizeof'],
+    ['var al: u64 = alignof(u64);', 'alignof'],
+    ['var ty: typeof(42) = 42;', 'typeof'],
+  ]) {
+    const ctLine = lines.find((l) => l.includes(needle));
+    if (!ctLine) {
+      console.error('FAIL: ct operator sample line not found:', needle);
+      process.exit(1);
+    }
+    const cr = grammar.tokenizeLine(ctLine, null);
+    const ctHits = cr.tokens
+      .filter((t) => t.scopes.includes('keyword.operator.clux'))
+      .map((t) => ctLine.slice(t.startIndex, t.endIndex));
+    if (!ctHits.includes(kw)) {
+      console.error('FAIL:', kw, 'not highlighted as keyword.operator:', JSON.stringify(ctHits));
+      process.exit(1);
+    }
+  }
+  console.log('OK: ct operator keywords (sizeof/alignof/typeof) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });

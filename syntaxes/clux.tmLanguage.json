@@ -21,6 +21,7 @@
     { "include": "#modifier-keywords" },
     { "include": "#literal-keywords" },
     { "include": "#cast-keyword" },
+    { "include": "#ct-operator-keywords" },
     { "include": "#operators" },
     { "include": "#punctuation" }
   ],
@@ -161,7 +162,7 @@
     "control-keywords": {
       "patterns": [
         {
-          "match": "\\b(if|else|switch|while|for|break|continue|return)\\b",
+          "match": "\\b(if|else|switch|while|do|for|break|continue|return)\\b",
           "name": "keyword.control.clux"
         },
         {
@@ -190,6 +191,14 @@
       "patterns": [
         {
           "match": "\\b(as|extends|is)\\b",
+          "name": "keyword.operator.clux"
+        }
+      ]
+    },
+    "ct-operator-keywords": {
+      "patterns": [
+        {
+          "match": "\\b(sizeof|alignof|typeof)\\b",
           "name": "keyword.operator.clux"
         }
       ]
