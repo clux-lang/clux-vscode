@@ -19,6 +19,7 @@
     { "include": "#type-keywords" },
     { "include": "#control-keywords" },
     { "include": "#modifier-keywords" },
+    { "include": "#module-keywords" },
     { "include": "#literal-keywords" },
     { "include": "#cast-keyword" },
     { "include": "#ct-operator-keywords" },
@@ -176,6 +177,14 @@
         {
           "match": "\\b(const|volatile)\\b",
           "name": "storage.modifier.clux"
+        }
+      ]
+    },
+    "module-keywords": {
+      "patterns": [
+        {
+          "match": "\\b(import|export|from)\\b",
+          "name": "keyword.module.clux"
         }
       ]
     },
