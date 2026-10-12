@@ -63,6 +63,22 @@ const wasmBin = vsco.loadWASM;
     'var sz: u64 = sizeof(i32);',
     'var al: u64 = alignof(u64);',
     'var ty: typeof(42) = 42;',
+    'import math from "./math.clux";',
+    'extern lib "*" as libc;',
+    'extern cfunc libc::printf(format: str, ...): void;',
+    'extern cfunc libc::malloc(size: usize): fatal opaque;',
+    'cfunc callback(data: ref *u8, len: usize): i32 { return 0; }',
+    'defer { printf("cleanup\\n"); }',
+    'var p: own *i32 = new i32{42};',
+    'var r: ref *i32 = p;&',
+    'var mv = move(p);',
+    'var cl = clone(r);',
+    'var arr = make(i32, 3, 1, 2, 3);',
+    'var n: usize = len(arr);',
+    'var sl: ref []i32 = arr[0:2];',
+    'var w: weak *i32 = share(r);',
+    'var up: ref *i32 = upgrade(w);',
+    'libc::printf("%d\\n", 42);',
   ].join('\n');
 
   const lines = sample.split('\n');
@@ -481,6 +497,94 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: ct operator keywords (sizeof/alignof/typeof) highlighted.');
+
+  // ---- M5/M6 关键字断言 ----
+  // cfunc/extern/comptime → storage.modifier.clux
+  // defer → keyword.control.clux
+  // import/export/from/lib → keyword.module.clux
+  // own/ref/fatal/weak/share → storage.modifier.clux
+  // opaque/usize → storage.type.primitive.clux
+  // clone/move/make/new/len → keyword.operator.clux
+  for (const [needle, kw, scope] of [
+    ['extern cfunc libc::printf', 'extern', 'storage.modifier.clux'],
+    ['extern cfunc libc::printf', 'cfunc', 'storage.modifier.clux'],
+    ['cfunc callback', 'cfunc', 'storage.modifier.clux'],
+    ['defer { printf', 'defer', 'keyword.control.clux'],
+    ['import math from', 'import', 'keyword.module.clux'],
+    ['import math from', 'from', 'keyword.module.clux'],
+    ['extern lib "*" as', 'lib', 'keyword.module.clux'],
+    ['var p: own *i32', 'own', 'storage.modifier.clux'],
+    ['var r: ref *i32', 'ref', 'storage.modifier.clux'],
+    ['fatal opaque', 'fatal', 'storage.modifier.clux'],
+    ['var w: weak *i32', 'weak', 'storage.modifier.clux'],
+    ['var up: ref *i32 = upgrade', 'ref', 'storage.modifier.clux'],
+    ['fatal opaque', 'opaque', 'storage.type.primitive.clux'],
+    ['var n: usize = len', 'usize', 'storage.type.primitive.clux'],
+    ['var mv = move(p)', 'move', 'keyword.operator.clux'],
+    ['var cl = clone(r)', 'clone', 'keyword.operator.clux'],
+    ['var arr = make(i32', 'make', 'keyword.operator.clux'],
+    ['var p: own *i32 = new i32', 'new', 'keyword.operator.clux'],
+    ['var n: usize = len(arr)', 'len', 'keyword.operator.clux'],
+  ]) {
+    const kwLine = lines.find((l) => l.includes(needle));
+    if (!kwLine) {
+      console.error('FAIL: M5/M6 sample line not found:', needle);
+      process.exit(1);
+    }
+    const kr = grammar.tokenizeLine(kwLine, null);
+    const kwHits = kr.tokens
+      .filter((t) => t.scopes.includes(scope))
+      .map((t) => kwLine.slice(t.startIndex, t.endIndex));
+    if (!kwHits.includes(kw)) {
+      console.error('FAIL:', kw, 'not highlighted as', scope + ':', JSON.stringify(kwHits));
+      process.exit(1);
+    }
+  }
+  console.log('OK: M5/M6 keywords (cfunc/extern/defer/lib/own/ref/fatal/weak/share/opaque/usize/clone/move/make/new/len) highlighted.');
+
+  // ---- cxs M5/M6 新助记符断言 ----
+  // IMPORT / GET_MEMBER / DATA / DEFER / EXTERN_CALL / EXTERN_LOAD / EXTERN_STORE
+  // / PUSH_PTR / PUSH_SLICE / SLICE / MAKE / MOVE / CLONE / DISPOSE / ADDR
+  // 必须着 keyword.mnemonic.cxs。
+  const cxsM5M6Sample = [
+    '    import "./math.clux"',
+    '    get_member "add"',
+    '    data',
+    '    defer',
+    '    extern_call "libc::printf" 2 0',
+    '    extern_load "libc::errno" 2',
+    '    extern_store "libc::counter" 2',
+    '    push_ptr 0',
+    '    push_slice 1',
+    '    slice 3',
+    '    make 3',
+    '    move',
+    '    clone',
+    '    dispose',
+    '    addr',
+  ].join('\n');
+
+  const m56Mn = ['import', 'get_member', 'data', 'defer',
+                 'extern_call', 'extern_load', 'extern_store',
+                 'push_ptr', 'push_slice', 'slice', 'make',
+                 'move', 'clone', 'dispose', 'addr'];
+  let m56State = null;
+  const m56Tokens = [];
+  for (const line of cxsM5M6Sample.split('\n')) {
+    const r = cxsGrammar.tokenizeLine(line, m56State);
+    m56State = r.ruleStack;
+    for (const t of r.tokens) {
+      const text = line.slice(t.startIndex, t.endIndex);
+      if (t.scopes.includes('keyword.mnemonic.cxs')) m56Tokens.push(text);
+    }
+  }
+  for (const m of m56Mn) {
+    if (!m56Tokens.includes(m)) {
+      console.error('FAIL: M5/M6 cxs mnemonic not highlighted:', m);
+      process.exit(1);
+    }
+  }
+  console.log('OK: M5/M6 cxs mnemonics (import/get_member/data/defer/extern_call/extern_load/extern_store/push_ptr/push_slice/slice/make/move/clone/dispose/addr) highlighted.');
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });

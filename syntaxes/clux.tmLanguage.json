@@ -103,7 +103,7 @@
       ]
     },
     "comptime-keyword": {
-      "match": "\\bcomptime\\b",
+      "match": "\\b(comptime|cfunc|extern)\\b",
       "name": "storage.modifier.clux"
     },
     "struct-declaration": {
@@ -155,7 +155,7 @@
     "type-keywords": {
       "patterns": [
         {
-          "match": "\\b(bool|f32|f64|i8|i16|i32|i64|str|u8|u16|u32|u64|void)\\b",
+          "match": "\\b(bool|f32|f64|i8|i16|i32|i64|str|u8|u16|u32|u64|usize|void|opaque)\\b",
           "name": "storage.type.primitive.clux"
         }
       ]
@@ -163,7 +163,7 @@
     "control-keywords": {
       "patterns": [
         {
-          "match": "\\b(if|else|switch|while|do|for|break|continue|return)\\b",
+          "match": "\\b(if|else|switch|while|do|for|break|continue|return|defer)\\b",
           "name": "keyword.control.clux"
         },
         {
@@ -175,7 +175,7 @@
     "modifier-keywords": {
       "patterns": [
         {
-          "match": "\\b(const|volatile)\\b",
+          "match": "\\b(const|volatile|own|ref|fatal|weak|share)\\b",
           "name": "storage.modifier.clux"
         }
       ]
@@ -183,7 +183,7 @@
     "module-keywords": {
       "patterns": [
         {
-          "match": "\\b(import|export|from)\\b",
+          "match": "\\b(import|export|from|lib)\\b",
           "name": "keyword.module.clux"
         }
       ]
@@ -207,7 +207,7 @@
     "ct-operator-keywords": {
       "patterns": [
         {
-          "match": "\\b(sizeof|alignof|typeof)\\b",
+          "match": "\\b(sizeof|alignof|typeof|clone|move|make|new|len)\\b",
           "name": "keyword.operator.clux"
         }
       ]
