@@ -6,6 +6,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
+    { "include": "#scope-annotation" },
     { "include": "#characters" },
     { "include": "#numbers" },
     { "include": "#comptime-keyword" },
@@ -60,9 +61,13 @@
         { "include": "#escape-sequence" }
       ]
     },
+    "scope-annotation": {
+      "match": "'<[^>]*>",
+      "name": "keyword.operator.scope.clux"
+    },
     "characters": {
       "name": "string.quoted.single.clux",
-      "begin": "'",
+      "begin": "'(?!<)",
       "end": "'",
       "beginCaptures": {
         "0": { "name": "punctuation.definition.string.begin.clux" }

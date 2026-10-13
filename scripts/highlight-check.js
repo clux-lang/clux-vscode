@@ -78,6 +78,7 @@ const wasmBin = vsco.loadWASM;
     'var sl: ref []i32 = arr[0:2];',
     'var w: weak *i32 = share(r);',
     'var up: ref *i32 = upgrade(w);',
+    "var nx: '<*> ?ref *const Node = cur.next;",
     'libc::printf("%d\\n", 42);',
   ].join('\n');
 
@@ -585,6 +586,32 @@ const wasmBin = vsco.loadWASM;
     }
   }
   console.log('OK: M5/M6 cxs mnemonics (import/get_member/data/defer/extern_call/extern_load/extern_store/push_ptr/push_slice/slice/make/move/clone/dispose/addr) highlighted.');
+
+  // ---- 作用域标注 '<*> 断言 ----
+  // '<*> 必须着 keyword.operator.scope.clux，不得被字符字面量吞掉。
+  const scopeLine = lines.find((l) => l.includes("'<*>"));
+  if (!scopeLine) {
+    console.error("FAIL: scope annotation sample line not found");
+    process.exit(1);
+  }
+  const scoper = grammar.tokenizeLine(scopeLine, null);
+  const scopeHits = scoper.tokens
+    .filter((t) => t.scopes.includes('keyword.operator.scope.clux'))
+    .map((t) => scopeLine.slice(t.startIndex, t.endIndex));
+  if (!scopeHits.includes("'<*>")) {
+    console.error("FAIL: '<*> not highlighted as keyword.operator.scope:", JSON.stringify(scopeHits));
+    process.exit(1);
+  }
+  // 确认该行没有被字符字面量吞掉（var 关键字仍应着 storage.type）
+  const scopeVarHits = scoper.tokens
+    .filter((t) => t.scopes.includes('storage.type.clux'))
+    .map((t) => scopeLine.slice(t.startIndex, t.endIndex))
+    .filter((s) => s === 'var');
+  if (scopeVarHits.length !== 1) {
+    console.error("FAIL: var keyword swallowed on scope-annotation line:", JSON.stringify(scopeVarHits));
+    process.exit(1);
+  }
+  console.log("OK: scope annotation '<*> highlighted as keyword.operator.scope.clux.");
 
   process.exit(0);
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });
