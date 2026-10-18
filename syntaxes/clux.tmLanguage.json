@@ -3,27 +3,37 @@
   "name": "clux",
   "scopeName": "source.clux",
   "fileTypes": ["cx"],
+  "comment": "同步对象：clux 编译器（src/parser/lexer.c 的 g_keywords / kPairs 与各 parse_*.c 的语法形态）。改动语言后跑 npm run check:highlight —— 它会逐个验证编译器的每个关键字都被着色，并（在能找到 ../clux 时）直接解析编译器源码做交叉核对。",
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
     { "include": "#scope-annotation" },
     { "include": "#characters" },
     { "include": "#numbers" },
-    { "include": "#comptime-keyword" },
-    { "include": "#struct-declaration" },
-    { "include": "#enum-declaration" },
-    { "include": "#union-declaration" },
-    { "include": "#cunion-declaration" },
+    { "include": "#struct-body" },
+    { "include": "#enum-body" },
+    { "include": "#qualified-function-name" },
+    { "include": "#qualified-var-name" },
+    { "include": "#cfunc-declaration" },
+    { "include": "#type-declaration" },
+    { "include": "#import-alias" },
+    { "include": "#foreach-header" },
     { "include": "#function-declaration" },
-    { "include": "#function-type-keyword" },
     { "include": "#var-declaration" },
+    { "include": "#new-type" },
+    { "include": "#construct-type" },
+    { "include": "#construct-field" },
+    { "include": "#member-access" },
+    { "include": "#parameters" },
     { "include": "#type-keywords" },
     { "include": "#control-keywords" },
-    { "include": "#modifier-keywords" },
+    { "include": "#storage-modifiers" },
     { "include": "#module-keywords" },
     { "include": "#literal-keywords" },
-    { "include": "#cast-keyword" },
-    { "include": "#ct-operator-keywords" },
+    { "include": "#cast-keywords" },
+    { "include": "#builtin-keywords" },
+    { "include": "#fallback-keywords" },
+    { "include": "#discard" },
     { "include": "#operators" },
     { "include": "#punctuation" }
   ],
@@ -57,13 +67,7 @@
       "endCaptures": {
         "0": { "name": "punctuation.definition.string.end.clux" }
       },
-      "patterns": [
-        { "include": "#escape-sequence" }
-      ]
-    },
-    "scope-annotation": {
-      "match": "'<[^>]*>",
-      "name": "keyword.operator.scope.clux"
+      "patterns": [{ "include": "#escape-sequence" }]
     },
     "characters": {
       "name": "string.quoted.single.clux",
@@ -75,80 +79,234 @@
       "endCaptures": {
         "0": { "name": "punctuation.definition.string.end.clux" }
       },
-      "patterns": [
-        { "include": "#escape-sequence" }
-      ]
+      "patterns": [{ "include": "#escape-sequence" }]
     },
     "escape-sequence": {
       "name": "constant.character.escape.clux",
-      "match": "\\\\(n|t|r|\\\\|'|\"|0|x[0-9a-fA-F]{1,2})"
+      "comment": "词法白名单：\\n \\t \\r \\\\ \\' \\\" \\0 \\xHH（1-2 位 hex）",
+      "match": "\\\\(?:[ntr\\\\'\"0]|x[0-9a-fA-F]{1,2})"
+    },
+    "scope-annotation": {
+      "comment": "作用域标注 '<a,b> / '<*>（' 前导，不是字符字面量；characters 用 '(?!<) 让路）",
+      "match": "'<[^>\\n]*>",
+      "name": "keyword.operator.scope.clux"
     },
     "numbers": {
+      "comment": "整数后缀 [iu](8|16|32|64) 或 usize；浮点后缀 f32/f64；进制前缀 0x/0o/0b",
       "patterns": [
         {
-          "name": "constant.numeric.clux",
-          "match": "\\b(0[xX][0-9a-fA-F]+)([iu](8|16|32|64))?\\b"
+          "name": "constant.numeric.hex.clux",
+          "match": "\\b0[xX][0-9a-fA-F]+(?:[iu](?:8|16|32|64)|usize)?\\b"
         },
         {
-          "name": "constant.numeric.clux",
-          "match": "\\b(0[oO][0-7]+)([iu](8|16|32|64))?\\b"
+          "name": "constant.numeric.octal.clux",
+          "match": "\\b0[oO][0-7]+(?:[iu](?:8|16|32|64)|usize)?\\b"
         },
         {
-          "name": "constant.numeric.clux",
-          "match": "\\b(0[bB][01]+)([iu](8|16|32|64))?\\b"
+          "name": "constant.numeric.binary.clux",
+          "match": "\\b0[bB][01]+(?:[iu](?:8|16|32|64)|usize)?\\b"
         },
         {
-          "name": "constant.numeric.clux",
-          "match": "\\b((\\d+\\.\\d*|\\.\\d+)([eE][+-]?\\d+)?|\\d+[eE][+-]?\\d+)(f(32|64))?\\b"
+          "name": "constant.numeric.float.clux",
+          "match": "\\b\\d+\\.\\d+(?:[eE][+-]?\\d+)?(?:f32|f64)?\\b|\\b\\d+[eE][+-]?\\d+(?:f32|f64)?\\b"
         },
         {
-          "name": "constant.numeric.clux",
-          "match": "\\b(\\d+)([iu](8|16|32|64))?\\b"
+          "name": "constant.numeric.decimal.clux",
+          "match": "\\b\\d+(?:[iu](?:8|16|32|64)|usize)?\\b"
         }
       ]
     },
-    "comptime-keyword": {
-      "match": "\\b(comptime|cfunc|extern)\\b",
-      "name": "storage.modifier.clux"
-    },
-    "struct-declaration": {
-      "match": "\\b(struct)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
-      "captures": {
+    "struct-body": {
+      "comment": "struct / union / cunion 体：字段名、静态属性、方法。方法体里的花括号由 #brace-block 自嵌套吞掉，不会被外层的 } 提前结束。",
+      "begin": "\\b(struct|union|cunion)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(\\{)",
+      "beginCaptures": {
         "1": { "name": "storage.type.clux" },
-        "2": { "name": "entity.name.type.clux" }
+        "2": { "name": "entity.name.type.clux" },
+        "3": { "name": "punctuation.section.braces.begin.clux" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.section.braces.end.clux" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#method-header" },
+        { "include": "#struct-member" },
+        { "include": "#qualified-function-name" },
+        { "include": "#var-declaration" },
+        { "include": "#brace-block" },
+        { "include": "#type-keywords" },
+        { "include": "#storage-modifiers" },
+        { "include": "#numbers" },
+        { "include": "#strings" },
+        { "include": "#operators" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "method-header": {
+      "comment": "struct 体内的 `func name(params)`：参数列表单独成对，避免把 self: 当成字段（同 struct-member 竞争）",
+      "begin": "\\b(func)\\s*(?:'<[^>\\n]*>\\s*)?(?:\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "storage.type.clux" },
+        "2": { "name": "entity.name.function.clux" },
+        "3": { "name": "punctuation.section.parens.begin.clux" }
+      },
+      "end": "(\\))",
+      "endCaptures": {
+        "1": { "name": "punctuation.section.parens.end.clux" }
+      },
+      "patterns": [
+        { "include": "#parameters" },
+        { "include": "#type-keywords" },
+        { "include": "#storage-modifiers" },
+        { "include": "#literals-and-numbers" },
+        { "include": "#operators" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "literals-and-numbers": {
+      "patterns": [{ "include": "#numbers" }, { "include": "#literal-keywords" }]
+    },
+    "brace-block": {
+      "comment": "自嵌套花括号块：方法体 / 静态属性初始化式里的 `{…}`（TextMate 靠规则栈递归，深度不限）",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.braces.begin.clux" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.braces.end.clux" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#characters" },
+        { "include": "#numbers" },
+        { "include": "#brace-block" },
+        { "include": "#function-declaration" },
+        { "include": "#var-declaration" },
+        { "include": "#new-type" },
+        { "include": "#construct-type" },
+        { "include": "#construct-field" },
+        { "include": "#member-access" },
+        { "include": "#parameters" },
+        { "include": "#type-keywords" },
+        { "include": "#control-keywords" },
+        { "include": "#storage-modifiers" },
+        { "include": "#module-keywords" },
+        { "include": "#literal-keywords" },
+        { "include": "#cast-keywords" },
+        { "include": "#builtin-keywords" },
+        { "include": "#fallback-keywords" },
+        { "include": "#discard" },
+        { "include": "#operators" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "struct-member": {
+      "comment": "字段声明 `name: T`（`...Base;` 嵌入由 operators 的 ... 处理）",
+      "match": "([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(:)(?![=:])",
+      "captures": {
+        "1": { "name": "variable.other.member.clux" },
+        "2": { "name": "punctuation.separator.clux" }
       }
     },
-    "enum-declaration": {
-      "match": "\\b(enum)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
-      "captures": {
+    "enum-body": {
+      "comment": "enum 体：variant 名与底层类型",
+      "begin": "\\b(enum)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)(?:\\s*(:)\\s*([\\p{L}_][\\p{L}\\p{N}_]*))?\\s*(\\{)",
+      "beginCaptures": {
         "1": { "name": "storage.type.clux" },
-        "2": { "name": "entity.name.type.clux" }
+        "2": { "name": "entity.name.type.clux" },
+        "3": { "name": "punctuation.separator.clux" },
+        "4": { "name": "entity.name.type.clux" },
+        "5": { "name": "punctuation.section.braces.begin.clux" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.section.braces.end.clux" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        {
+          "name": "variable.other.enummember.clux",
+          "match": "[\\p{L}_][\\p{L}\\p{N}_]*"
+        },
+        { "include": "#numbers" },
+        { "include": "#operators" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "qualified-function-name": {
+      "comment": "extern cfunc libc::printf / extern func libc::abort —— 库别名 + 符号名",
+      "match": "\\b(cfunc|func)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(::)\\s*([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "storage.modifier.clux" },
+        "2": { "name": "variable.other.module.clux" },
+        "3": { "name": "keyword.operator.clux" },
+        "4": { "name": "entity.name.function.clux" }
       }
     },
-    "union-declaration": {
-      "match": "\\b(union)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+    "qualified-var-name": {
+      "comment": "extern var libc::_fmode —— 动态库导出的全局数据符号",
+      "match": "\\b(var)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(::)\\s*([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
         "1": { "name": "storage.type.clux" },
-        "2": { "name": "entity.name.type.clux" }
+        "2": { "name": "variable.other.module.clux" },
+        "3": { "name": "keyword.operator.clux" },
+        "4": { "name": "variable.other.global.clux" }
       }
     },
-    "cunion-declaration": {
-      "match": "\\b(cunion)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+    "cfunc-declaration": {
+      "comment": "cfunc NAME(...) —— 有体的 C ABI 函数定义",
+      "match": "\\b(cfunc)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
-        "1": { "name": "storage.type.clux" },
-        "2": { "name": "entity.name.type.clux" }
+        "1": { "name": "storage.modifier.clux" },
+        "2": { "name": "entity.name.function.clux" }
+      }
+    },
+    "type-declaration": {
+      "comment": "type T = ...；以及无 { 的聚合头（体由 #struct-body / #enum-body 处理）",
+      "patterns": [
+        {
+          "match": "\\b(type)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": { "name": "storage.type.clux" },
+            "2": { "name": "entity.name.type.clux" }
+          }
+        },
+        {
+          "match": "\\b(struct|enum|union|cunion)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": { "name": "storage.type.clux" },
+            "2": { "name": "entity.name.type.clux" }
+          }
+        }
+      ]
+    },
+    "import-alias": {
+      "match": "\\b(import)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "keyword.module.clux" },
+        "2": { "name": "variable.other.module.clux" }
+      }
+    },
+    "foreach-header": {
+      "comment": "foreach ([var] name [: T] of iterable) —— 迭代变量着色（`of` 在 #control-keywords）",
+      "match": "\\b(foreach)\\s*(\\()\\s*(var\\s+)?([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.clux" },
+        "2": { "name": "punctuation.section.parens.clux" },
+        "3": { "name": "storage.type.clux" },
+        "4": { "name": "variable.other.clux" }
       }
     },
     "function-declaration": {
-      "match": "\\b(func)\\s*(?:\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
+      "comment": "func ['<a,b>] [|caps|] name —— 三段都可选；匿名/带捕获但不具名的写法由 #fallback-keywords 兜底",
+      "match": "\\b(func)\\s*(?:'<[^>\\n]*>\\s*)?(?:\\|[^|\\n]*\\|\\s*)?([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
         "1": { "name": "storage.type.clux" },
         "2": { "name": "entity.name.function.clux" }
       }
-    },
-    "function-type-keyword": {
-      "match": "\\bfunc(?=\\s*\\()",
-      "name": "storage.type.clux"
     },
     "var-declaration": {
       "match": "\\b(var)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
@@ -157,79 +315,112 @@
         "2": { "name": "variable.other.clux" }
       }
     },
+    "new-type": {
+      "comment": "new T{...} —— 堆分配构造",
+      "match": "\\b(new)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)(?=\\s*\\{)",
+      "captures": {
+        "1": { "name": "keyword.operator.clux" },
+        "2": { "name": "entity.name.type.clux" }
+      }
+    },
+    "construct-type": {
+      "comment": ".T{...} —— 类型字面量构造（`.(`/`.{` 匿名构造不命中）",
+      "match": "(\\.)([\\p{L}_][\\p{L}\\p{N}_]*)(?=\\s*\\{)",
+      "captures": {
+        "1": { "name": "punctuation.accessor.clux" },
+        "2": { "name": "entity.name.type.clux" }
+      }
+    },
+    "construct-field": {
+      "comment": ".name = value —— 具名构造字段 / 字段赋值（(?!=) 避开 ==）",
+      "match": "(\\.)([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(=)(?!=)",
+      "captures": {
+        "1": { "name": "punctuation.accessor.clux" },
+        "2": { "name": "variable.other.member.clux" },
+        "3": { "name": "keyword.operator.clux" }
+      }
+    },
+    "member-access": {
+      "comment": "a.b / a.b() —— 字段与方法访问（.& / .* / .! / .? 不命中，落回 operator）",
+      "match": "(\\.)([\\p{L}_][\\p{L}\\p{N}]*)",
+      "captures": {
+        "1": { "name": "punctuation.accessor.clux" },
+        "2": { "name": "variable.other.member.clux" }
+      }
+    },
+    "parameters": {
+      "comment": "形参 / 字段形态 `name:`（var 声明与聚合体已先行消费，这里只剩形参与其它声明位）",
+      "match": "([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(:)(?![=:])",
+      "captures": {
+        "1": { "name": "variable.parameter.clux" },
+        "2": { "name": "punctuation.separator.clux" }
+      }
+    },
     "type-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(bool|f32|f64|i8|i16|i32|i64|str|u8|u16|u32|u64|usize|void|opaque)\\b",
-          "name": "storage.type.primitive.clux"
-        }
-      ]
+      "match": "\\b(?:bool|f32|f64|i8|i16|i32|i64|str|u8|u16|u32|u64|usize|void|opaque)\\b",
+      "name": "storage.type.primitive.clux"
     },
     "control-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(if|else|switch|while|do|for|break|continue|return|defer)\\b",
-          "name": "keyword.control.clux"
-        },
-        {
-          "match": "\\b(default)\\b",
-          "name": "keyword.control.clux"
-        }
-      ]
+      "match": "\\b(?:if|else|switch|while|do|for|foreach|of|break|continue|return|defer|default)\\b",
+      "name": "keyword.control.clux"
     },
-    "modifier-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(const|volatile|own|ref|fatal|weak|share)\\b",
-          "name": "storage.modifier.clux"
-        }
-      ]
+    "storage-modifiers": {
+      "match": "\\b(?:comptime|cfunc|extern|const|volatile|own|ref|fatal|share|weak)\\b",
+      "name": "storage.modifier.clux"
     },
     "module-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(import|export|from|lib)\\b",
-          "name": "keyword.module.clux"
-        }
-      ]
+      "match": "\\b(?:import|export|from|lib)\\b",
+      "name": "keyword.module.clux"
     },
     "literal-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(true|false|undefined|nil)\\b",
-          "name": "constant.language.clux"
-        }
-      ]
+      "match": "\\b(?:true|false|undefined|nil)\\b",
+      "name": "constant.language.clux"
     },
-    "cast-keyword": {
-      "patterns": [
-        {
-          "match": "\\b(as|extends|is)\\b",
-          "name": "keyword.operator.clux"
-        }
-      ]
+    "cast-keywords": {
+      "match": "\\b(?:as|extends|is)\\b",
+      "name": "keyword.operator.clux"
     },
-    "ct-operator-keywords": {
-      "patterns": [
-        {
-          "match": "\\b(sizeof|alignof|typeof|clone|move|make|new|len)\\b",
-          "name": "keyword.operator.clux"
-        }
-      ]
+    "builtin-keywords": {
+      "comment": "语言级内建（词法关键字）：sizeof/alignof/typeof/len/make/new/move/clone",
+      "match": "\\b(?:sizeof|alignof|typeof|len|make|new|move|clone)\\b",
+      "name": "keyword.operator.clux"
+    },
+    "fallback-keywords": {
+      "comment": "裸 func（`func |x| (...)` 匿名闭包 / 函数类型位置）——上面的声明模式都会漏，兜底着色",
+      "match": "\\bfunc\\b",
+      "name": "storage.type.clux"
+    },
+    "discard": {
+      "comment": "`_ = expr` 显式丢弃（裸 _ 是保留标识符；用户不能定义 __x）",
+      "match": "(?<![\\p{L}\\p{N}_])_(?![\\p{L}\\p{N}_])",
+      "name": "keyword.other.discard.clux"
     },
     "operators": {
       "patterns": [
         {
+          "name": "keyword.operator.vararg.clux",
+          "comment": "C 变参 `...`（FFI）与 struct 嵌入 `...Base`",
+          "match": "\\.\\.\\."
+        },
+        {
           "name": "keyword.operator.clux",
-          "match": "<<|>>|<=|>=|==|!=|&&|\\|\\||\\+=|-=|\\*=|/=|%=|::|[+\\-*/%<>=!&|^~?]"
+          "match": "->|::|<<|>>|<=|>=|==|!=|&&|\\|\\||\\+=|-=|\\*=|/=|%=|[+\\-*/%<>=!&|^~?]"
         }
       ]
     },
     "punctuation": {
       "patterns": [
         {
+          "name": "punctuation.section.braces.clux",
+          "match": "[{}]"
+        },
+        {
           "name": "punctuation.section.brackets.clux",
-          "match": "[\\[\\](){}]"
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.parens.clux",
+          "match": "[()]"
         },
         {
           "name": "punctuation.separator.clux",

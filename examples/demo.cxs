@@ -1,0 +1,130 @@
+; demo.cxs —— clux 字节码汇编（.cxs）语法高亮展示
+;
+; 与 examples/demo.cx 配套：一个**可汇编、可运行**的最小程序（不含 printf）。
+; 汇编语法见 src/vm/bcode_asm.c：
+;   - 注释只有 ';' 行注释（到行尾）
+;   - 标签定义 `name:`；标签引用 `[name]`（字符集 [A-Za-z0-9_.-]）
+;   - 助记符大小写无关（规范写法大写，这里按反汇编风格写小写）
+;   - 操作数只有三类：十进制字面量（可为负）/ "字符串" / [标签]
+;   - 未知 opcode 的兜底是 `.byte <十进制 u32>`
+;
+; 手写汇编的结构：hoist 类型提升区（两遍）→ 函数注册段 → 各函数体。
+
+_start:
+    ; ---- hoist pass 1：声明签名对象（add = id 64，main = id 65）----
+    push_func_type
+    define_type 64
+    push_func_type
+    define_type 65
+    ; ---- hoist pass 2：补齐签名并 SEAL（依赖后序）----
+    load_type 64
+    push "i32"
+    func_type_param
+    push "i32"
+    func_type_param
+    push "i32"
+    func_type_return
+    seal
+    load_type 65
+    push "void"
+    func_type_return
+    seal
+    ; ---- 函数注册段：PUSH_FUNCTION 占位 → BIND_FUNC 分配 id ----
+    load_type 64
+    push_function [add]
+    bind_func 64
+    set_func_name "add"
+    push_undefined
+    define "add"
+    load_type 65
+    push_function [main]
+    bind_func 65
+    set_func_name "main"
+    push_undefined
+    define "main"
+    halt
+
+; add(a, b) -> a + b（形参由 PUSH_UNDEFINED; DEFINE 绑定）
+add:
+    push_undefined
+    define "b"
+    push_undefined
+    define "a"
+    push_scope
+    push "a"
+    push "b"
+    add
+    ret
+
+; main：answer = add(40, 2)；再跑一个 0..3 的循环把 answer 累加 3 次
+main:
+    push_scope
+    push "add"
+    push_i32 40
+    push_i32 2
+    call 2
+    push_undefined
+    define "answer"
+    push_i32 0
+    push_undefined
+    define "i"
+loop:
+    push "i"
+    push_i32 3
+    lt
+    jz [done]
+    push "answer"
+    push "answer"
+    push_i32 1
+    add
+    store "answer"
+    pop
+    push "i"
+    push "i"
+    push_i32 1
+    add
+    store "i"
+    pop
+    jmp [loop]
+done:
+    ; 位运算 / 取反 / 比较 / 移位（只演示助记符，结果丢弃）
+    push_i32 6
+    push_i32 3
+    and
+    pop
+    push_i32 6
+    push_i32 3
+    or
+    pop
+    push_i32 6
+    push_i32 3
+    bxor
+    pop
+    push_i32 1
+    push_i32 4
+    shl
+    pop
+    push_i32 16
+    push_i32 2
+    shr
+    pop
+    push_i32 7
+    neg
+    pop
+    push_bool 1
+    not
+    pop
+    push_i32 1
+    push_i32 2
+    eq
+    pop
+    push_f64 1.5
+    pop
+    push_string "demo\n"
+    pop
+    pop_scope
+    push_undefined
+    ret
+
+; 数据段兜底指令示例（未知 opcode 手写 u32；这里只演示语法，不参与执行）
+.byte 0

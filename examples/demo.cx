@@ -1,32 +1,188 @@
-// clux M1 语法高亮示例
-/* 块注释
-   可嵌套注释 */
+// demo.cx —— clux 语法高亮展示（M1–M5 + foreach）
+//
+// 这个文件同时是 scripts/highlight-check.js 的样例：它必须能被当前的 clux 编译器
+// 编译运行（`clux run examples/demo.cx`），高亮检查也逐行 tokenize 它。
+// 因此这里**不用**那些"只在语法层成立的展示片段"。
+//
+/* 块注释：
+   关键字 / 类型名 / 数字在注释里都不着色（注释优先于一切规则）。
+   块注释**不嵌套**——遇到第一个"星号 + 斜杠"就结束。 */
 
-func fib(n: i32): i32 {
-    if n <= 1 { return n; }
-    return fib(n - 1) + fib(n - 2);
+extern lib "*" as libc;
+extern cfunc libc::printf(format: str, ...): void;
+extern var libc::_fmode: i32;
+
+comptime var WIDTH = 3;
+
+comptime func triple(n: i32): i32 {
+    return n * 3;
 }
 
-func main() {
-    var a: i32 = 42;
-    var b: u64 = 0xFFu8;
-    var c: f64 = 3.14e10f64;
-    var d = 0b1010 + 0o17;
-    var s = "hello\tworld\x41";
+type Vec = [3]i32;
+
+enum Color: i32 {
+    Red = 1,
+    Green = 2,
+    Blue = 3
+}
+
+struct Point {
+    x: i32;
+    y: i32;
+
+    var count: i32 = 0;
+
+    // 方法：接收者是第一个参数（self 不是关键字）
+    func len2(self: ref *Point): i32 {
+        return self.x * self.x + self.y * self.y;
+    }
+}
+
+union Shape {
+    radius: f32;
+    w: f32;
+    h: f32;
+}
+
+cunion Bits {
+    i: i32;
+    f: f32;
+    b: bool;
+}
+
+func sum_own(s: own []i32): i32 {
+    var acc = 0;
+    foreach (var e of s) {
+        acc = acc + e;
+    }
+    return acc;
+}
+
+// 作用域标注：'<p> 表示"返回值借自参数 p"（' 前导，不是字符字面量）
+func pick(p: ref *i32): '<p> ref *i32 {
+    return p;
+}
+
+func main(): i32 {
+    // ---- 字面量：进制前缀、类型后缀、浮点、字符、字符串转义 ----
+    var a: i32 = 0xFFi32;
+    var b: u64 = 0b1010u64 + 0o17u64 + 123usize;
+    var f: f32 = 2.5f32;
+    var g: f64 = 3.14e10f64;
     var ch = 'z';
+    var text = "hello\tworld\x41";
     var ok = true && !false;
-    var u = undefined;
+    var nothing: ?i32 = nil;
+    var undef: i32 = undefined;
+    _ = nothing;
 
-    for a = 0; a < 10; a += 1 {
-        if ok { continue; }
-        else { break; }
+    // ---- 数组 / 元组 / 切片 / make ----
+    var arr = .[3]i32{ 1, 2, 3 };
+    var sl: ref []i32 = arr[:];
+    var made = make(i32, 3, 4, 5, 6);
+    var tp: <i32, bool> = .<i32, bool>{ 7, true };
+    libc::printf("a=%d b=%d f=%d g=%d ch=%d\n", a, b as i32, f as i32,
+                 g as i32, ch as i32);
+    libc::printf("text=%s ok=%d len(arr)=%d len(sl)=%d\n", text, ok as i32,
+                 len(arr) as i32, len(sl) as i32);
+    libc::printf("made=%d tp=%d\n", made[2], tp[0]);
+
+    // ---- struct：构造、方法、静态属性 ----
+    var p = .Point{ .x = 3, .y = 4 };
+    var hp = new Point{ .x = 6, .y = 8 };
+    Point::count += 1;
+    libc::printf("p.len2=%d hp.len2=%d count=%d\n", p.len2(), hp.len2(),
+                 Point::count);
+
+    // ---- union / switch（无 fallthrough，`->` 分支）----
+    var s = .Shape{ .radius = 1.5f32 };
+    switch (s.radius as i32) {
+        (1) -> { libc::printf("switch: one\n"); }
+        (0, 2) -> { libc::printf("switch: zero/two\n"); }
+        default -> { libc::printf("switch: other\n"); }
     }
 
-    while a > 0 {
-        a -= 1;
-        _ = fib(a);
+    // ---- 控制流：if / while / do-while / for ----
+    var i = 0;
+    while (i < 2) {
+        i += 1;
+    }
+    do {
+        i -= 1;
+    } while (i > 1);
+    for (var k: usize = 0u64; k < 2u64; k = k + 1u64) {
+        i += 1;
+    }
+    if (i > 0 && ok) {
+        libc::printf("i=%d\n", i);
+    } else {
+        libc::printf("i<=0\n");
     }
 
-    const LIMIT: i32 = 100;
-    volatile x: i32 = 1;
+    // ---- foreach：for-each 语法糖（前脱糖展开成索引 for）----
+    var e = 0;
+    var sum = 0;
+    foreach (var v of arr) {
+        sum = sum + v;
+    }
+    foreach (e of arr) {
+        sum = sum + e;
+    }
+    libc::printf("sum=%d\n", sum);
+
+    // ---- 所有权：own / ref / fatal、move / clone、后置 .& .* ----
+    var plain: i32 = 42;
+    var r: ref *i32 = plain.&;
+    var deref = r.*;
+    var copied = clone(deref);
+    var picked = pick(plain.&);
+    libc::printf("deref=%d copied=%d picked=%d fmode=%d\n", deref, copied,
+                 picked.*, libc::_fmode as i32);
+
+    var own_p: own *i32 = new i32{ 7 };
+    var moved = move(own_p);
+    libc::printf("moved=%d\n", moved.*);
+    _ = move(moved);
+
+    // ---- 可选值：?T + nil + .! 解包 ----
+    var maybe: ?i32 = .?i32{ 5 };
+    var inner = maybe.!;
+    libc::printf("inner=%d\n", inner);
+
+    // ---- own 元素借出：own [] own *i32 + ref *T 元素 ----
+    var ptrs: own [] own *i32 = make(own *i32, 2, new i32{ 1 }, new i32{ 2 });
+    var total = 0;
+    foreach (var q: ref *i32 of ptrs) {
+        total = total + q.*;
+    }
+    libc::printf("total=%d len(ptrs)=%d\n", total, len(ptrs) as i32);
+    _ = sum_own(move(made));
+
+    // ---- 闭包（捕获列表）+ defer ----
+    var base = 10;
+    var adder = func |base| (n: i32): i32 {
+        return base + n;
+    };
+    libc::printf("adder=%d\n", adder(5));
+    defer {
+        libc::printf("defer runs last\n");
+    }
+
+    // ---- 编译期：sizeof / alignof / typeof / comptime ----
+    var sz = sizeof(Point) as i32;
+    var al = alignof(u64) as i32;
+    var n3 = triple(WIDTH);
+    // typeof 的结果是类型，只能由 type 绑定（`var t = typeof(a)` 是编译期错误）
+    type Ty = typeof(a);
+    var ty_size = sizeof(Ty) as i32;
+    libc::printf("sz=%d al=%d n3=%d ty_size=%d\n", sz, al, n3, ty_size);
+
+    // ---- 位运算与复合赋值（复合赋值只有 += -= *= /= %=）----
+    var bits = (1 << 4) | 0b11;
+    bits = bits >> 1;
+    bits = bits ^ 0xFF;
+    libc::printf("bits=%d\n", bits);
+    _ = sl;
+
+    return 0;
 }
