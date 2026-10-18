@@ -2,7 +2,7 @@
   "name": "clux",
   "displayName": "clux",
   "description": "clux language support: syntax highlighting (.cx + .cxs) and formatting",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "clux",
   "license": "MIT",
   "repository": {
@@ -93,7 +93,7 @@
     "watch": "tsc -watch -p ./",
     "check:highlight": "node scripts/highlight-check.js",
     "check:langconfig": "node scripts/validate-language-config.js",
-    "package": "vsce package --out clux-0.2.0.vsix"
+    "package": "vsce package --out clux-0.2.1.vsix"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

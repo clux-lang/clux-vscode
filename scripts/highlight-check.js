@@ -194,7 +194,7 @@ member_call mod mul ne neg new not opt_is_none or pop pop_scope ptr_get ptr_set
 push push_array push_bool push_const push_cunion push_enum push_f32 push_f64
 push_func_type push_function push_i16 push_i32 push_i64 push_i8 push_opt
 push_opt_none push_ptr push_scope push_slice push_string push_struct push_tuple
-push_u16 push_u32 push_u64 push_u8 push_undefined push_union push_value
+push_u16 push_u32 push_u64 push_u8 push_undefined push_usize push_union push_value
 push_volatile ret seal set_closure set_field_ownership set_func_captures
 set_func_name set_ownership set_type set_type_name shl shr slice store
 store_attr store_nil store_reinit sub take_slot union_member unwrap

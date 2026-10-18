@@ -18,7 +18,7 @@
 | 编译期 | `comptime var` / `comptime func` / `comptime if`、`sizeof` / `alignof` / `typeof`、`is` / `extends` / `as` |
 | 字面量 | 多进制整数 + `i8`…`u64` / `usize` 后缀、浮点 + `f32`/`f64`、`true`/`false`/`nil`/`undefined`、字符与转义 |
 | 成员 | 聚合体字段 / enum variant / 方法名 / 形参 / 模块别名 / `::` 限定的 extern 符号 |
-| 汇编 | `BCODE_ASM_TABLE` 全 117 条助记符、标签定义与 `[label]` 引用、`.byte`、字符串与十进制操作数 |
+| 汇编 | `BCODE_ASM_TABLE` 全 118 条助记符、标签定义与 `[label]` 引用、`.byte`、字符串与十进制操作数 |
 
 ## 自检（防漂移）
 
