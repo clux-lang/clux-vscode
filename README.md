@@ -11,7 +11,7 @@
 
 | 类别 | 内容 |
 |---|---|
-| 声明 | `func` / `cfunc` / `extern cfunc` / `extern func` / `extern var` / `extern lib` / `var` / `const` / `comptime` / `type` / `struct` / `enum` / `union` / `cunion` / `import` / `export` |
+| 声明 | `func` / `cfunc` / `extern cfunc` / `extern func` / `extern var` / `extern lib <别名> from "<库名>"` / `var` / `const` / `comptime` / `type` / `struct` / `enum` / `union` / `cunion` / `import` / `export` |
 | 类型 | `bool str void opaque` 与全部整数/浮点宽度（含 `usize`）、`?T`、`[N]T`、`[]T`、`*T`、`func(...)->T` |
 | 所有权 | `own` / `ref` / `fatal` / `share` / `weak`、`move` / `clone` / `new`、后置 `.&` / `.*` / `.!` / `.?`、作用域标注 `'<a,b>` |
 | 控制流 | `if` / `else` / `switch`（`->` 分支）/ `while` / `do` / `for` / **`foreach` … `of`** / `break` / `continue` / `return` / `defer` |

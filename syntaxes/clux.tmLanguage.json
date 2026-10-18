@@ -17,6 +17,7 @@
     { "include": "#cfunc-declaration" },
     { "include": "#type-declaration" },
     { "include": "#import-alias" },
+    { "include": "#extern-lib-alias" },
     { "include": "#foreach-header" },
     { "include": "#function-declaration" },
     { "include": "#var-declaration" },
@@ -288,6 +289,16 @@
       "captures": {
         "1": { "name": "keyword.module.clux" },
         "2": { "name": "variable.other.module.clux" }
+      }
+    },
+    "extern-lib-alias": {
+      "comment": "extern lib <别名> from \"<通用库名>\"; —— 别名与 import 别名同样按模块着色（库名是通用名，由加载器展开成平台候选文件）",
+      "match": "\\b(extern)\\s+(lib)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)\\s+(from)\\b",
+      "captures": {
+        "1": { "name": "storage.modifier.clux" },
+        "2": { "name": "keyword.module.clux" },
+        "3": { "name": "variable.other.module.clux" },
+        "4": { "name": "keyword.module.clux" }
       }
     },
     "foreach-header": {

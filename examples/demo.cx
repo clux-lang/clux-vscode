@@ -8,7 +8,7 @@
    关键字 / 类型名 / 数字在注释里都不着色（注释优先于一切规则）。
    块注释**不嵌套**——遇到第一个"星号 + 斜杠"就结束。 */
 
-extern lib "*" as libc;
+extern lib libc from "*";
 extern cfunc libc::printf(format: str, ...): void;
 extern var libc::_fmode: i32;
 

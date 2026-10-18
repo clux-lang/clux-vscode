@@ -405,6 +405,11 @@ function expectSomeScope(grammar, line, scope, label) {
   expectScoped(clux, 'var p = new Point{ .x = 1 };', 'Point', 'entity.name.type.clux', 'new T{} 类型');
   expectScoped(clux, 'var p = .Point{ .x = 1 };', 'x', 'variable.other.member.clux', '构造字段 .x');
   expectScoped(clux, 'var m = h.bump();', 'bump', 'variable.other.member.clux', '方法调用成员');
+  // extern lib <别名> from "<通用库名>"（CMake 风格；旧形式 extern lib "<文件>" as 别名 已删除）
+  expectScoped(clux, 'extern lib libc from "c";', 'libc', 'variable.other.module.clux', 'extern lib 别名');
+  expectScoped(clux, 'extern lib libc from "c";', 'lib', 'keyword.module.clux', 'extern lib 关键字');
+  expectScoped(clux, 'extern lib libc from "c";', 'from', 'keyword.module.clux', 'extern lib 的 from');
+  expectSomeScope(clux, 'extern lib libc from "*";', 'string.quoted.double.clux', '进程伪库 "*" 字符串');
   // foreach 头部三段
   expectScoped(clux, 'foreach (var e of arr) { }', 'foreach', 'keyword.control.clux', 'foreach 关键字');
   expectScoped(clux, 'foreach (var e of arr) { }', 'e', 'variable.other.clux', 'foreach 迭代变量');
