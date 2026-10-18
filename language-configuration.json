@@ -23,7 +23,7 @@
     ["'", "'"]
   ],
   "indentationRules": {
-    "increaseIndentPattern": "^\\s*((func|if|else|for|while|var).*)?\\{[^}\"']*$",
+    "increaseIndentPattern": "^\\s*.*\\{\\s*$",
     "decreaseIndentPattern": "^\\s*\\}"
   },
   "onEnterRules": [
@@ -40,6 +40,10 @@
       "beforeText": "^\\s*(//.*)?$",
       "afterText": "^\\s*\\}",
       "action": { "indent": "outdent" }
+    },
+    {
+      "beforeText": "^\\s*/\\*(?!\\*/).*$",
+      "action": { "indent": "indent" }
     }
   ]
 }
